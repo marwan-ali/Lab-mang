@@ -390,6 +390,100 @@
     </div>
   </section>
 
+  <section class="screen" id="screen-fin">
+    <div class="card">
+      <div class="field" style="margin-bottom:0;">
+        <label for="finMonth">الشهر</label>
+        <input type="month" id="finMonth">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>الدخل</h2>
+      <div class="field">
+        <label for="finGovSalary">راتب الحكومة (دينار)</label>
+        <input type="number" id="finGovSalary" inputmode="numeric" placeholder="0">
+      </div>
+      <div class="mini-list">
+        <div class="item"><span>راتب المختبر (تلقائي من المحاسبة)</span><span id="finLabSalary">0 د.ع</span></div>
+        <div class="item"><span><b>مجموع الدخل</b></span><span id="finIncomeTotal"><b>0 د.ع</b></span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>استقطاعات ثابتة</h2>
+      <div class="row">
+        <div class="field">
+          <label for="finRent">الإيجار</label>
+          <input type="number" id="finRent" inputmode="numeric" placeholder="250000">
+        </div>
+        <div class="field">
+          <label for="finInternet">الإنترنت</label>
+          <input type="number" id="finInternet" inputmode="numeric" placeholder="30000">
+        </div>
+      </div>
+      <div class="field">
+        <label for="finGenerator">المولد</label>
+        <input type="number" id="finGenerator" inputmode="numeric" placeholder="0">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>مشتريات هذا الشهر</h2>
+      <div class="mini-list" id="finPurchaseList"></div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field">
+          <label for="finPurchaseAmount">المبلغ</label>
+          <input type="number" id="finPurchaseAmount" inputmode="numeric" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="finPurchaseDesc">وش هو</label>
+          <input type="text" id="finPurchaseDesc" placeholder="مثال: أدوات" autocomplete="off">
+        </div>
+      </div>
+      <button class="btn block" id="finAddPurchaseBtn">+ إضافة مشترى</button>
+    </div>
+
+    <div class="card">
+      <h2>الدين الشخصي</h2>
+      <p class="note" style="margin:0 0 10px;">منفصل تماماً عن دين المختبر.</p>
+      <div class="big" style="border-bottom:none;padding-bottom:0;margin-bottom:8px;">
+        <div>
+          <div class="label">الرصيد المتبقي عليك حالياً</div>
+          <div class="amount" id="finDebtBalance">0 د.ع</div>
+        </div>
+      </div>
+      <div class="mini-list" id="finDebtList"></div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field">
+          <label for="finDebtAmount">دين جديد (دينار)</label>
+          <input type="number" id="finDebtAmount" inputmode="numeric" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="finDebtNote">ملاحظة (اختياري)</label>
+          <input type="text" id="finDebtNote" placeholder="مثال: قرض" autocomplete="off">
+        </div>
+      </div>
+      <button class="btn block" id="finAddDebtBtn" style="margin-bottom:14px;">+ إضافة دين جديد</button>
+      <div class="field">
+        <label for="finDebtPayment">سداد دين هذا الشهر</label>
+        <input type="number" id="finDebtPayment" inputmode="numeric" placeholder="0">
+      </div>
+      <p class="note">يُخصم من الرصيد المتبقي، ومن صافي هذا الشهر بالأسفل.</p>
+    </div>
+
+    <div class="card">
+      <h2>الصافي النهائي لشهر <span id="finMonthLabel"></span></h2>
+      <div class="mini-list" id="finBreakdown"></div>
+      <div class="big" style="margin-top:6px;">
+        <div>
+          <div class="label">الصافي</div>
+          <div class="amount" id="finNet">0 د.ع</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <nav class="tabs">
@@ -397,6 +491,7 @@
   <button class="tab" data-screen="form"><span class="ic">＋</span>إضافة</button>
   <button class="tab" data-screen="acct"><span class="ic">∑</span>المحاسبة</button>
   <button class="tab" data-screen="stats"><span class="ic">📊</span>الإحصاء</button>
+  <button class="tab" data-screen="fin"><span class="ic">👛</span>وضعي المالي</button>
 </nav>
 
 <div class="overlay" id="overlay"><img id="overlayImg" alt=""></div>
@@ -422,7 +517,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 
   /* ---------- قاعدة البيانات ---------- */
   const DB_NAME = "labCasesDB";
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
   let db = null;
 
   function openDB(){
@@ -438,6 +533,15 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         }
         if(!d.objectStoreNames.contains("debts")){
           d.createObjectStore("debts", { keyPath: "id", autoIncrement: true });
+        }
+        if(!d.objectStoreNames.contains("finmonths")){
+          d.createObjectStore("finmonths", { keyPath: "month" });
+        }
+        if(!d.objectStoreNames.contains("persDebts")){
+          d.createObjectStore("persDebts", { keyPath: "id", autoIncrement: true });
+        }
+        if(!d.objectStoreNames.contains("purchases")){
+          d.createObjectStore("purchases", { keyPath: "id", autoIncrement: true });
         }
       };
       req.onsuccess = function(e){ resolve(e.target.result); };
@@ -530,6 +634,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     if(name === "cases") renderCases();
     if(name === "acct") renderAcct();
     if(name === "stats") renderStats();
+    if(name === "fin") openFinScreen();
   }
   document.querySelectorAll(".tab").forEach(function(t){
     t.addEventListener("click", function(){
@@ -1021,6 +1126,182 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   }
   $("statsMonth").addEventListener("change", renderStats);
 
+  /* ---------- الوضع المالي (شخصي، منفصل عن المختبر) ---------- */
+  let allFinMonths = [];
+  let persDebts = [];
+  let purchases = [];
+  let finSaveTimer = null;
+
+  async function openFinScreen(){
+    allFinMonths = await getAll("finmonths");
+    persDebts = await getAll("persDebts");
+    purchases = await getAll("purchases");
+    if(!$("finMonth").value) $("finMonth").value = currentMonth();
+    loadFinScreen();
+  }
+  function loadFinScreen(){
+    const month = $("finMonth").value || currentMonth();
+    const rec = allFinMonths.find((m) => m.month === month) || {};
+    $("finGovSalary").value = rec.govSalary != null ? rec.govSalary : "";
+    $("finRent").value = rec.rent != null ? rec.rent : 250000;
+    $("finInternet").value = rec.internet != null ? rec.internet : 30000;
+    $("finGenerator").value = rec.generator != null ? rec.generator : "";
+    $("finDebtPayment").value = rec.debtPayment != null ? rec.debtPayment : "";
+    renderFinPurchases(month);
+    renderFinDebts();
+    renderFinSummary(month);
+  }
+  async function saveFinMonth(){
+    const month = $("finMonth").value || currentMonth();
+    const rec = {
+      month: month,
+      govSalary: Number($("finGovSalary").value) || 0,
+      rent: Number($("finRent").value) || 0,
+      internet: Number($("finInternet").value) || 0,
+      generator: Number($("finGenerator").value) || 0,
+      debtPayment: Number($("finDebtPayment").value) || 0
+    };
+    await putRec("finmonths", rec);
+    allFinMonths = await getAll("finmonths");
+    renderFinDebts();
+    renderFinSummary(month);
+  }
+  $("finMonth").addEventListener("change", loadFinScreen);
+  ["finGovSalary","finRent","finInternet","finGenerator","finDebtPayment"].forEach(function(id){
+    $(id).addEventListener("input", function(){
+      renderFinSummary($("finMonth").value || currentMonth());
+      clearTimeout(finSaveTimer);
+      finSaveTimer = setTimeout(saveFinMonth, 400);
+    });
+  });
+
+  function purchasesForMonth(month){
+    return purchases.filter((p) => p.month === month);
+  }
+  function renderFinPurchases(month){
+    const list = purchasesForMonth(month);
+    const box = $("finPurchaseList");
+    box.innerHTML = "";
+    if(list.length === 0){
+      box.innerHTML = '<div class="empty" style="padding:8px 0;font-size:13px;">لا توجد مشتريات هذا الشهر</div>';
+      return;
+    }
+    list.slice().sort((a,b) => b.id - a.id).forEach(function(p){
+      const el = document.createElement("div");
+      el.className = "item";
+      el.innerHTML = '<span>' + esc(p.desc || "—") + '</span><span>' + fmtMoney(p.amount) +
+        ' <button class="del-purchase" data-id="' + p.id + '" style="background:none;border:none;color:var(--danger);font-size:13px;padding:0 0 0 8px;cursor:pointer;">✕</button></span>';
+      box.appendChild(el);
+    });
+    box.querySelectorAll(".del-purchase").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        const id = Number(btn.dataset.id);
+        if(!confirm("حذف هذا المشترى؟")) return;
+        await delRec("purchases", id);
+        purchases = await getAll("purchases");
+        const m = $("finMonth").value || currentMonth();
+        renderFinPurchases(m);
+        renderFinSummary(m);
+        toast("تم الحذف");
+      });
+    });
+  }
+  $("finAddPurchaseBtn").addEventListener("click", async function(){
+    const raw = $("finPurchaseAmount").value.trim();
+    if(raw === ""){ toast("اكتب المبلغ أولاً"); return; }
+    const amount = Math.round(Number(raw));
+    if(isNaN(amount) || amount === 0){ toast("مبلغ غير صحيح"); return; }
+    const month = $("finMonth").value || currentMonth();
+    await putRec("purchases", { month: month, amount: amount, desc: $("finPurchaseDesc").value.trim(), createdAt: new Date().toISOString() });
+    $("finPurchaseAmount").value = "";
+    $("finPurchaseDesc").value = "";
+    purchases = await getAll("purchases");
+    renderFinPurchases(month);
+    renderFinSummary(month);
+    toast("تمت الإضافة");
+  });
+
+  function persDebtBalance(){
+    const borrowed = persDebts.reduce((s,d) => s + (Number(d.amount)||0), 0);
+    const paid = allFinMonths.reduce((s,m) => s + (Number(m.debtPayment)||0), 0);
+    return borrowed - paid;
+  }
+  function renderFinDebts(){
+    $("finDebtBalance").textContent = fmtMoney(persDebtBalance());
+    const box = $("finDebtList");
+    box.innerHTML = "";
+    const sorted = persDebts.slice().sort((a,b) => b.id - a.id);
+    if(sorted.length === 0){
+      box.innerHTML = '<div class="empty" style="padding:8px 0;font-size:13px;">لا يوجد دين مسجَّل</div>';
+      return;
+    }
+    sorted.forEach(function(d){
+      const el = document.createElement("div");
+      el.className = "item";
+      const label = (d.date || "") + (d.note ? " — " + esc(d.note) : "");
+      el.innerHTML = '<span style="font-size:13px;color:var(--muted);">' + label + '</span><span>' + fmtMoney(d.amount) +
+        ' <button class="del-persdebt" data-id="' + d.id + '" style="background:none;border:none;color:var(--danger);font-size:13px;padding:0 0 0 8px;cursor:pointer;">✕</button></span>';
+      box.appendChild(el);
+    });
+    box.querySelectorAll(".del-persdebt").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        const id = Number(btn.dataset.id);
+        if(!confirm("حذف هذا الدين؟")) return;
+        await delRec("persDebts", id);
+        persDebts = await getAll("persDebts");
+        renderFinDebts();
+        renderFinSummary($("finMonth").value || currentMonth());
+        toast("تم الحذف");
+      });
+    });
+  }
+  $("finAddDebtBtn").addEventListener("click", async function(){
+    const raw = $("finDebtAmount").value.trim();
+    if(raw === ""){ toast("اكتب المبلغ أولاً"); return; }
+    const amount = Math.round(Number(raw));
+    if(isNaN(amount) || amount === 0){ toast("مبلغ غير صحيح"); return; }
+    await putRec("persDebts", { amount: amount, note: $("finDebtNote").value.trim(), date: todayISO(), createdAt: new Date().toISOString() });
+    $("finDebtAmount").value = "";
+    $("finDebtNote").value = "";
+    persDebts = await getAll("persDebts");
+    renderFinDebts();
+    renderFinSummary($("finMonth").value || currentMonth());
+    toast("تمت إضافة الدين");
+  });
+
+  function renderFinSummary(month){
+    $("finMonthLabel").textContent = monthLabel(month);
+    const gov = Number($("finGovSalary").value) || 0;
+    const labGross = completedFor(month).reduce((s,c) => s + (Number(c.price)||0), 0);
+    const labNet = labGross - debtBalance();
+    $("finLabSalary").textContent = fmtMoney(labNet);
+    const income = gov + labNet;
+    $("finIncomeTotal").innerHTML = "<b>" + fmtMoney(income) + "</b>";
+
+    const rent = Number($("finRent").value) || 0;
+    const internet = Number($("finInternet").value) || 0;
+    const generator = Number($("finGenerator").value) || 0;
+    const purchasesTotal = purchasesForMonth(month).reduce((s,p) => s + (Number(p.amount)||0), 0);
+    const debtPayment = Number($("finDebtPayment").value) || 0;
+
+    const net = income - rent - internet - generator - purchasesTotal - debtPayment;
+
+    const rows = [
+      ["+ راتب الحكومة", gov],
+      ["+ راتب المختبر", labNet],
+      ["− الإيجار", rent],
+      ["− الإنترنت", internet],
+      ["− المولد", generator],
+      ["− مشتريات الشهر", purchasesTotal],
+      ["− سداد دين هذا الشهر", debtPayment]
+    ];
+    $("finBreakdown").innerHTML = rows.map(function(r){
+      return '<div class="item"><span>' + r[0] + '</span><span>' + fmtMoney(r[1]) + '</span></div>';
+    }).join("");
+
+    $("finNet").textContent = fmtMoney(net);
+  }
+
   /* ---------- التصدير إلى إكسل ---------- */
   function rowsFor(list){
     return list.map((c) => ({
@@ -1137,7 +1418,14 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   }
   $("backupBtn").addEventListener("click", async function(){
     toast("جارِ تجهيز النسخة…");
-    const out = { app:"labCases", version:2, exportedAt:new Date().toISOString(), doctors:doctors, debts:debts, cases:[] };
+    const finmonthsAll = await getAll("finmonths");
+    const persDebtsAll = await getAll("persDebts");
+    const purchasesAll = await getAll("purchases");
+    const out = {
+      app:"labCases", version:3, exportedAt:new Date().toISOString(),
+      doctors:doctors, debts:debts, cases:[],
+      finmonths: finmonthsAll, persDebts: persDebtsAll, purchases: purchasesAll
+    };
     for(const c of cases){
       const copy = Object.assign({}, c);
       copy.photo = c.photo ? await blobToDataUrl(c.photo) : null;
@@ -1158,6 +1446,9 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     await clearStore("cases");
     await clearStore("doctors");
     await clearStore("debts");
+    await clearStore("finmonths");
+    await clearStore("persDebts");
+    await clearStore("purchases");
     for(const c of data.cases){
       const rec = Object.assign({}, c);
       rec.photo = c.photo ? await dataUrlToBlob(c.photo) : null;
@@ -1168,6 +1459,17 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       const rec = Object.assign({}, d);
       delete rec.id;
       await putRec("debts", rec);
+    }
+    for(const m of (data.finmonths || [])) await putRec("finmonths", m);
+    for(const d of (data.persDebts || [])){
+      const rec = Object.assign({}, d);
+      delete rec.id;
+      await putRec("persDebts", rec);
+    }
+    for(const p of (data.purchases || [])){
+      const rec = Object.assign({}, p);
+      delete rec.id;
+      await putRec("purchases", rec);
     }
     await reload();
     toast("تمت الاستعادة");
