@@ -1,6 +1,6 @@
 // سجل حالات المختبر — Service Worker
 // يخزّن ملفات التطبيق نفسها فقط (الواجهة)، بيانات الحالات تبقى في IndexedDB على الجهاز ولا علاقة لها بهذا الملف.
-const CACHE_NAME = "lab-cases-shell-v5";
+const CACHE_NAME = "lab-cases-shell-v7";
 const APP_SHELL = [
   "./",
   "./index.html",

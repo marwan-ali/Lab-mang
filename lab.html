@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#1F6F6B">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --bg:#F4F6F7;
@@ -371,6 +372,16 @@
         <button class="btn" id="backupBtn">تصدير نسخة احتياطية</button>
         <label class="btn" for="restoreInput">استعادة من ملف</label>
         <input type="file" id="restoreInput" accept=".json,application/json" class="hidden">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>نسخة Google Drive</h2>
+      <p class="note" id="driveStatus" style="margin:0 0 10px;">لم يسجَّل دخول بعد.</p>
+      <button class="btn block" id="driveSignInBtn">تسجيل دخول بكوكل</button>
+      <div id="driveActions" class="actions hidden" style="margin-top:10px;">
+        <button class="btn" id="driveBackupBtn">نسخ إلى درايف</button>
+        <button class="btn" id="driveRestoreBtn">جلب من درايف</button>
       </div>
     </div>
   </section>
@@ -1938,8 +1949,8 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     const r = await fetch(u);
     return await r.blob();
   }
-  $("backupBtn").addEventListener("click", async function(){
-    toast("جارِ تجهيز النسخة…");
+
+  async function buildBackupObject(){
     const finmonthsAll = await getAll("finmonths");
     const persDebtsAll = await getAll("persDebts");
     const purchasesAll = await getAll("purchases");
@@ -1959,17 +1970,12 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       copy.photo = c.photo ? await blobToDataUrl(c.photo) : null;
       out.cases.push(copy);
     }
-    const blob = new Blob([JSON.stringify(out)], { type:"application/json" });
-    deliverFile(blob, "lab-backup-" + todayISO() + ".json");
-  });
-  $("restoreInput").addEventListener("change", async function(){
-    const file = this.files[0];
-    this.value = "";
-    if(!file) return;
-    let data;
-    try{ data = JSON.parse(await file.text()); }catch(e){ toast("الملف غير صالح"); return; }
-    if(!data || data.app !== "labCases" || !Array.isArray(data.cases)){ toast("هذا ليس ملف نسخة احتياطية للتطبيق"); return; }
-    if(!confirm("سيتم استبدال كل البيانات الحالية (" + cases.length + " حالة) بمحتوى الملف (" + data.cases.length + " حالة). متابعة؟")) return;
+    return out;
+  }
+
+  async function applyRestoreData(data){
+    if(!data || data.app !== "labCases" || !Array.isArray(data.cases)){ toast("هذا ليس ملف نسخة احتياطية للتطبيق"); return false; }
+    if(!confirm("سيتم استبدال كل البيانات الحالية (" + cases.length + " حالة) بمحتوى الملف (" + data.cases.length + " حالة). متابعة؟")) return false;
     toast("جارِ الاستعادة…");
     await clearStore("cases");
     await clearStore("doctors");
@@ -2024,6 +2030,144 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     await reload();
     toast("تمت الاستعادة");
     showScreen("cases");
+    return true;
+  }
+
+  $("backupBtn").addEventListener("click", async function(){
+    toast("جارِ تجهيز النسخة…");
+    const out = await buildBackupObject();
+    const blob = new Blob([JSON.stringify(out)], { type:"application/json" });
+    deliverFile(blob, "lab-backup-" + todayISO() + ".json");
+  });
+  $("restoreInput").addEventListener("change", async function(){
+    const file = this.files[0];
+    this.value = "";
+    if(!file) return;
+    let data;
+    try{ data = JSON.parse(await file.text()); }catch(e){ toast("الملف غير صالح"); return; }
+    await applyRestoreData(data);
+  });
+
+  /* ---------- نسخة Google Drive الاحتياطية ---------- */
+  /* عدّل القيمة التالية بمعرّف OAuth Client ID من Google Cloud Console */
+  const GOOGLE_CLIENT_ID = "648020935010-a1rdr802tpt0tbmn5civpr6qooqsi298.apps.googleusercontent.com";
+  const DRIVE_BACKUP_FILENAME = "lab-cases-backup.json";
+  const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+
+  let driveAccessToken = null;
+  let driveTokenClient = null;
+  let driveFileId = null;
+
+  function initDriveAuth(){
+    if(typeof google === "undefined" || !google.accounts || !google.accounts.oauth2) return;
+    try{
+      driveTokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: DRIVE_SCOPE,
+        callback: function(resp){
+          if(resp && resp.access_token){
+            driveAccessToken = resp.access_token;
+            $("driveStatus").textContent = "تم تسجيل الدخول ✓";
+            $("driveSignInBtn").classList.add("hidden");
+            $("driveActions").classList.remove("hidden");
+          } else {
+            toast("تعذّر تسجيل الدخول بكوكل");
+          }
+        }
+      });
+    }catch(e){
+      $("driveStatus").textContent = "تعذّر تحميل خدمة كوكل — تأكد من إعداد Client ID";
+    }
+  }
+  $("driveSignInBtn").addEventListener("click", function(){
+    if(!driveTokenClient){ toast("تعذّر تحميل خدمة كوكل — تأكد من الإنترنت والإعداد"); return; }
+    driveTokenClient.requestAccessToken();
+  });
+
+  async function driveFindFile(){
+    const url = "https://www.googleapis.com/drive/v3/files?q=" +
+      encodeURIComponent("name='" + DRIVE_BACKUP_FILENAME + "' and trashed=false") +
+      "&fields=files(id,name)";
+    const res = await fetch(url, { headers: { Authorization: "Bearer " + driveAccessToken } });
+    if(!res.ok) throw new Error("drive-search-failed");
+    const data = await res.json();
+    return (data.files && data.files[0]) ? data.files[0].id : null;
+  }
+  async function driveCreateFile(jsonText){
+    const boundary = "labbackupboundary";
+    const metadata = JSON.stringify({ name: DRIVE_BACKUP_FILENAME, mimeType: "application/json" });
+    const body =
+      "--" + boundary + "\r\n" +
+      "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+      metadata + "\r\n" +
+      "--" + boundary + "\r\n" +
+      "Content-Type: application/json\r\n\r\n" +
+      jsonText + "\r\n" +
+      "--" + boundary + "--";
+    const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + driveAccessToken,
+        "Content-Type": 'multipart/related; boundary="' + boundary + '"'
+      },
+      body: body
+    });
+    if(!res.ok) throw new Error("drive-create-failed");
+    const data = await res.json();
+    return data.id;
+  }
+  async function driveUpdateFile(fileId, jsonText){
+    const res = await fetch("https://www.googleapis.com/upload/drive/v3/files/" + fileId + "?uploadType=media", {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + driveAccessToken,
+        "Content-Type": "application/json"
+      },
+      body: jsonText
+    });
+    if(!res.ok) throw new Error("drive-update-failed");
+  }
+  async function driveFetchFile(fileId){
+    const res = await fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
+      headers: { Authorization: "Bearer " + driveAccessToken }
+    });
+    if(!res.ok) throw new Error("drive-fetch-failed");
+    return await res.text();
+  }
+
+  $("driveBackupBtn").addEventListener("click", async function(){
+    if(!driveAccessToken){ toast("سجّل الدخول بكوكل أولاً"); return; }
+    toast("جارِ الرفع لدرايف…");
+    try{
+      const backupObj = await buildBackupObject();
+      const jsonText = JSON.stringify(backupObj);
+      if(!driveFileId) driveFileId = await driveFindFile();
+      if(driveFileId){
+        await driveUpdateFile(driveFileId, jsonText);
+      } else {
+        driveFileId = await driveCreateFile(jsonText);
+      }
+      $("driveStatus").textContent = "آخر نسخة: " + new Date().toLocaleString("ar-IQ");
+      toast("تم الرفع لدرايف بنجاح");
+    }catch(e){
+      toast("تعذّر الرفع — تأكد من الإنترنت وتسجيل الدخول");
+    }
+  });
+  $("driveRestoreBtn").addEventListener("click", async function(){
+    if(!driveAccessToken){ toast("سجّل الدخول بكوكل أولاً"); return; }
+    try{
+      if(!driveFileId) driveFileId = await driveFindFile();
+      if(!driveFileId){ toast("ما فيه نسخة على درايف بعد"); return; }
+      toast("جارِ الجلب من درايف…");
+      const text = await driveFetchFile(driveFileId);
+      const data = JSON.parse(text);
+      await applyRestoreData(data);
+    }catch(e){
+      toast("تعذّر الاسترجاع — تأكد من الإنترنت وتسجيل الدخول");
+    }
+  });
+  window.addEventListener("load", function(){
+    setTimeout(initDriveAuth, 300);
   });
 
   /* ---------- بدء التشغيل ---------- */
