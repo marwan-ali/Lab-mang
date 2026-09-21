@@ -172,6 +172,20 @@
   }
   .toast.show{opacity:1;}
   .hidden{display:none !important;}
+  /* planning */
+  .link-btn{background:none;border:none;color:var(--accent);font-family:inherit;font-size:13.5px;padding:0;cursor:pointer;}
+  .planTab{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:9px 4px;border-radius:9px;font-family:inherit;font-size:13.5px;cursor:pointer;}
+  .planTab.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700;}
+  .plan-view{display:none;}
+  .plan-view.active{display:block;}
+  .plan-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .plan-row:last-child{border-bottom:none;}
+  .plan-row label{display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;}
+  .plan-row .txt{flex:1;min-width:0;font-size:14px;word-break:break-word;}
+  .plan-row .txt.done{text-decoration:line-through;color:var(--muted);}
+  .plan-row .meta{font-size:12px;color:var(--muted);}
+  .plan-row input[type=checkbox]{width:18px;height:18px;flex:0 0 auto;}
+  .plan-row .plan-del{background:none;border:none;color:var(--danger);font-size:14px;padding:0 0 0 8px;cursor:pointer;flex:0 0 auto;}
 </style>
 </head>
 <body>
@@ -405,9 +419,10 @@
         <input type="number" id="finGovSalary" inputmode="numeric" placeholder="0">
       </div>
       <div class="mini-list">
-        <div class="item"><span>راتب المختبر (تلقائي من المحاسبة)</span><span id="finLabSalary">0 د.ع</span></div>
+        <div class="item"><span>راتب المختبر <span id="finLabSalaryMonth" style="color:var(--muted);font-size:12px;"></span></span><span id="finLabSalary">0 د.ع</span></div>
         <div class="item"><span><b>مجموع الدخل</b></span><span id="finIncomeTotal"><b>0 د.ع</b></span></div>
       </div>
+      <p class="note" style="margin-top:8px;">راتب المختبر يوصلك نهاية الشهر، فيتم سحبه من صافي الشهر السابق.</p>
     </div>
 
     <div class="card">
@@ -473,6 +488,32 @@
     </div>
 
     <div class="card">
+      <h2>الادخار</h2>
+      <p class="note" style="margin:0 0 10px;">تقدر تضيف أو تسحب بأي شهر وبأي وقت.</p>
+      <div class="big" style="border-bottom:none;padding-bottom:0;margin-bottom:8px;">
+        <div>
+          <div class="label">الرصيد المدَّخر الحالي</div>
+          <div class="amount" id="finSavingsBalance">0 د.ع</div>
+        </div>
+      </div>
+      <div class="mini-list" id="finSavingsList"></div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field">
+          <label for="finSavingsAmount">المبلغ</label>
+          <input type="number" id="finSavingsAmount" inputmode="numeric" placeholder="0">
+        </div>
+        <div class="field">
+          <label for="finSavingsNote">ملاحظة (اختياري)</label>
+          <input type="text" id="finSavingsNote" placeholder="مثال: توفير" autocomplete="off">
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="finSavingsAddBtn">+ إضافة للادخار</button>
+        <button class="btn" id="finSavingsWithdrawBtn">− سحب من الادخار</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>الصافي النهائي لشهر <span id="finMonthLabel"></span></h2>
       <div class="mini-list" id="finBreakdown"></div>
       <div class="big" style="margin-top:6px;">
@@ -480,6 +521,138 @@
           <div class="label">الصافي</div>
           <div class="amount" id="finNet">0 د.ع</div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-plan">
+    <div class="card" style="padding:10px;">
+      <div class="filters" style="margin-bottom:0;">
+        <button class="planTab active" data-plan="strategic" type="button">الاستراتيجية</button>
+        <button class="planTab" data-plan="month" type="button">الشهر</button>
+        <button class="planTab" data-plan="people" type="button">الأشخاص</button>
+      </div>
+    </div>
+
+    <!-- ===== الاستراتيجية ===== -->
+    <div class="plan-view active" id="planView-strategic">
+      <div class="card">
+        <h2>الخطة الاستراتيجية</h2>
+        <p class="note" style="margin:0 0 10px;">أهداف بعيدة المدى، بدون ربط بشهر معيّن.</p>
+        <div id="strategicList"></div>
+        <div class="field" style="margin-top:10px;">
+          <input type="text" id="strategicInput" placeholder="هدف استراتيجي جديد" autocomplete="off">
+        </div>
+        <button class="btn block" id="strategicAddBtn">+ إضافة هدف</button>
+      </div>
+    </div>
+
+    <!-- ===== الشهر (تكتيكي) ===== -->
+    <div class="plan-view" id="planView-month">
+      <div class="card">
+        <div class="field" style="margin-bottom:0;">
+          <label for="planMonth">الشهر</label>
+          <input type="month" id="planMonth">
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>الأهداف</h2>
+        <div id="planGoalsList"></div>
+        <div class="field" style="margin-top:10px;">
+          <input type="text" id="planGoalText" placeholder="هدف جديد" autocomplete="off">
+        </div>
+        <button type="button" class="link-btn" id="planGoalMoreToggle" style="margin:4px 0 10px;">+ تفاصيل (شخص، مبلغ، تاريخ)</button>
+        <div id="planGoalMore" class="hidden">
+          <div class="row">
+            <div class="field">
+              <label for="planGoalOwner">يخص</label>
+              <select id="planGoalOwner"><option value="عام">عام</option></select>
+            </div>
+            <div class="field">
+              <label for="planGoalAmount">مبلغ</label>
+              <input type="number" id="planGoalAmount" inputmode="numeric" placeholder="اختياري">
+            </div>
+          </div>
+          <div class="field">
+            <label for="planGoalDate">تاريخ</label>
+            <input type="date" id="planGoalDate">
+          </div>
+        </div>
+        <button class="btn block" id="planGoalAddBtn">+ إضافة هدف</button>
+      </div>
+
+      <div class="card">
+        <h2>المتطلبات</h2>
+        <div id="planReqsList"></div>
+        <div class="field" style="margin-top:10px;">
+          <input type="text" id="planReqText" placeholder="متطلب جديد" autocomplete="off">
+        </div>
+        <button type="button" class="link-btn" id="planReqMoreToggle" style="margin:4px 0 10px;">+ تفاصيل (شخص، مبلغ، تاريخ)</button>
+        <div id="planReqMore" class="hidden">
+          <div class="row">
+            <div class="field">
+              <label for="planReqOwner">يخص</label>
+              <select id="planReqOwner"><option value="عام">عام</option></select>
+            </div>
+            <div class="field">
+              <label for="planReqAmount">مبلغ</label>
+              <input type="number" id="planReqAmount" inputmode="numeric" placeholder="اختياري">
+            </div>
+          </div>
+          <div class="field">
+            <label for="planReqDate">تاريخ</label>
+            <input type="date" id="planReqDate">
+          </div>
+        </div>
+        <button class="btn block" id="planReqAddBtn">+ إضافة متطلب</button>
+      </div>
+
+      <div class="card">
+        <h2>ملاحظات الشهر</h2>
+        <textarea id="planNotes" placeholder="أي ملاحظات لهذا الشهر…"></textarea>
+      </div>
+    </div>
+
+    <!-- ===== الأشخاص ===== -->
+    <div class="plan-view" id="planView-people">
+      <div class="card">
+        <div class="field">
+          <label for="personSelect">الشخص</label>
+          <select id="personSelect"></select>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div class="field" style="flex:1;">
+            <input type="text" id="newPersonInput" placeholder="اسم شخص جديد" autocomplete="off">
+          </div>
+        </div>
+        <button class="btn small" id="addPersonBtn">+ إضافة شخص</button>
+      </div>
+
+      <div class="card">
+        <h2 id="personItemsTitle">العناصر</h2>
+        <div id="personItemsList"></div>
+        <div class="field" style="margin-top:10px;">
+          <input type="text" id="personItemText" placeholder="نص العنصر" autocomplete="off">
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="personItemType">النوع</label>
+            <select id="personItemType">
+              <option value="goal">هدف</option>
+              <option value="requirement">متطلب</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="personItemAmount">مبلغ</label>
+            <input type="number" id="personItemAmount" inputmode="numeric" placeholder="اختياري">
+          </div>
+        </div>
+        <div class="field">
+          <label for="personItemDate">تاريخ</label>
+          <input type="date" id="personItemDate">
+        </div>
+        <button class="btn block" id="personItemAddBtn">+ إضافة عنصر</button>
       </div>
     </div>
   </section>
@@ -492,6 +665,7 @@
   <button class="tab" data-screen="acct"><span class="ic">∑</span>المحاسبة</button>
   <button class="tab" data-screen="stats"><span class="ic">📊</span>الإحصاء</button>
   <button class="tab" data-screen="fin"><span class="ic">👛</span>وضعي المالي</button>
+  <button class="tab" data-screen="plan"><span class="ic">🧭</span>التخطيط</button>
 </nav>
 
 <div class="overlay" id="overlay"><img id="overlayImg" alt=""></div>
@@ -517,7 +691,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
 
   /* ---------- قاعدة البيانات ---------- */
   const DB_NAME = "labCasesDB";
-  const DB_VERSION = 3;
+  const DB_VERSION = 5;
   let db = null;
 
   function openDB(){
@@ -543,6 +717,21 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
         if(!d.objectStoreNames.contains("purchases")){
           d.createObjectStore("purchases", { keyPath: "id", autoIncrement: true });
         }
+        if(!d.objectStoreNames.contains("savings")){
+          d.createObjectStore("savings", { keyPath: "id", autoIncrement: true });
+        }
+        if(!d.objectStoreNames.contains("strategicGoals")){
+          d.createObjectStore("strategicGoals", { keyPath: "id", autoIncrement: true });
+        }
+        if(!d.objectStoreNames.contains("people")){
+          d.createObjectStore("people", { keyPath: "name" });
+        }
+        if(!d.objectStoreNames.contains("planItems")){
+          d.createObjectStore("planItems", { keyPath: "id", autoIncrement: true });
+        }
+        if(!d.objectStoreNames.contains("monthNotes")){
+          d.createObjectStore("monthNotes", { keyPath: "month" });
+        }
       };
       req.onsuccess = function(e){ resolve(e.target.result); };
       req.onerror = function(){ reject(req.error || new Error("open failed")); };
@@ -564,6 +753,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     });
   }
   const getAll = (store) => tx(store, "readonly", (s) => s.getAll());
+  const getRec = (store, key) => tx(store, "readonly", (s) => s.get(key));
   const putRec = (store, rec) => tx(store, "readwrite", (s) => s.put(rec));
   const delRec = (store, key) => tx(store, "readwrite", (s) => s.delete(key));
   const clearStore = (store) => tx(store, "readwrite", (s) => s.clear());
@@ -635,6 +825,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     if(name === "acct") renderAcct();
     if(name === "stats") renderStats();
     if(name === "fin") openFinScreen();
+    if(name === "plan") openPlanScreen();
   }
   document.querySelectorAll(".tab").forEach(function(t){
     t.addEventListener("click", function(){
@@ -1130,12 +1321,22 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
   let allFinMonths = [];
   let persDebts = [];
   let purchases = [];
+  let savings = [];
   let finSaveTimer = null;
+
+  function prevMonth(m){
+    const parts = (m || currentMonth()).split("-");
+    let y = parseInt(parts[0], 10), mo = parseInt(parts[1], 10);
+    mo -= 1;
+    if(mo < 1){ mo = 12; y -= 1; }
+    return y + "-" + String(mo).padStart(2, "0");
+  }
 
   async function openFinScreen(){
     allFinMonths = await getAll("finmonths");
     persDebts = await getAll("persDebts");
     purchases = await getAll("purchases");
+    savings = await getAll("savings");
     if(!$("finMonth").value) $("finMonth").value = currentMonth();
     loadFinScreen();
   }
@@ -1149,6 +1350,7 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     $("finDebtPayment").value = rec.debtPayment != null ? rec.debtPayment : "";
     renderFinPurchases(month);
     renderFinDebts();
+    renderFinSavings(month);
     renderFinSummary(month);
   }
   async function saveFinMonth(){
@@ -1269,12 +1471,68 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     toast("تمت إضافة الدين");
   });
 
+  function savingsBalance(){
+    return savings.reduce((s,x) => s + (x.type === "add" ? (Number(x.amount)||0) : -(Number(x.amount)||0)), 0);
+  }
+  function savingsForMonth(month){
+    return savings.filter((x) => x.month === month);
+  }
+  function renderFinSavings(month){
+    $("finSavingsBalance").textContent = fmtMoney(savingsBalance());
+    const list = savingsForMonth(month).slice().sort((a,b) => b.id - a.id);
+    const box = $("finSavingsList");
+    box.innerHTML = "";
+    if(list.length === 0){
+      box.innerHTML = '<div class="empty" style="padding:8px 0;font-size:13px;">لا توجد عمليات ادخار هذا الشهر</div>';
+      return;
+    }
+    list.forEach(function(x){
+      const el = document.createElement("div");
+      el.className = "item";
+      const sign = x.type === "add" ? "+" : "−";
+      const label = (x.date || "") + (x.note ? " — " + esc(x.note) : "");
+      el.innerHTML = '<span style="font-size:13px;color:var(--muted);">' + label + '</span><span>' + sign + " " + fmtMoney(x.amount) +
+        ' <button class="del-saving" data-id="' + x.id + '" style="background:none;border:none;color:var(--danger);font-size:13px;padding:0 0 0 8px;cursor:pointer;">✕</button></span>';
+      box.appendChild(el);
+    });
+    box.querySelectorAll(".del-saving").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        const id = Number(btn.dataset.id);
+        if(!confirm("حذف هذي العملية؟")) return;
+        await delRec("savings", id);
+        savings = await getAll("savings");
+        const m = $("finMonth").value || currentMonth();
+        renderFinSavings(m);
+        renderFinSummary(m);
+        toast("تم الحذف");
+      });
+    });
+  }
+  async function addSavingsOp(type){
+    const raw = $("finSavingsAmount").value.trim();
+    if(raw === ""){ toast("اكتب المبلغ أولاً"); return; }
+    const amount = Math.round(Number(raw));
+    if(isNaN(amount) || amount === 0){ toast("مبلغ غير صحيح"); return; }
+    const month = $("finMonth").value || currentMonth();
+    await putRec("savings", { type: type, amount: amount, note: $("finSavingsNote").value.trim(), month: month, date: todayISO(), createdAt: new Date().toISOString() });
+    $("finSavingsAmount").value = "";
+    $("finSavingsNote").value = "";
+    savings = await getAll("savings");
+    renderFinSavings(month);
+    renderFinSummary(month);
+    toast(type === "add" ? "تمت الإضافة للادخار" : "تم السحب من الادخار");
+  }
+  $("finSavingsAddBtn").addEventListener("click", function(){ addSavingsOp("add"); });
+  $("finSavingsWithdrawBtn").addEventListener("click", function(){ addSavingsOp("withdraw"); });
+
   function renderFinSummary(month){
     $("finMonthLabel").textContent = monthLabel(month);
     const gov = Number($("finGovSalary").value) || 0;
-    const labGross = completedFor(month).reduce((s,c) => s + (Number(c.price)||0), 0);
+    const labMonth = prevMonth(month);
+    const labGross = completedFor(labMonth).reduce((s,c) => s + (Number(c.price)||0), 0);
     const labNet = labGross - debtBalance();
     $("finLabSalary").textContent = fmtMoney(labNet);
+    $("finLabSalaryMonth").textContent = "(من " + monthLabel(labMonth) + ")";
     const income = gov + labNet;
     $("finIncomeTotal").innerHTML = "<b>" + fmtMoney(income) + "</b>";
 
@@ -1283,8 +1541,10 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     const generator = Number($("finGenerator").value) || 0;
     const purchasesTotal = purchasesForMonth(month).reduce((s,p) => s + (Number(p.amount)||0), 0);
     const debtPayment = Number($("finDebtPayment").value) || 0;
+    const savingsAdd = savingsForMonth(month).filter((x) => x.type === "add").reduce((s,x) => s + (Number(x.amount)||0), 0);
+    const savingsWithdraw = savingsForMonth(month).filter((x) => x.type === "withdraw").reduce((s,x) => s + (Number(x.amount)||0), 0);
 
-    const net = income - rent - internet - generator - purchasesTotal - debtPayment;
+    const net = income - rent - internet - generator - purchasesTotal - debtPayment - savingsAdd + savingsWithdraw;
 
     const rows = [
       ["+ راتب الحكومة", gov],
@@ -1293,13 +1553,275 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       ["− الإنترنت", internet],
       ["− المولد", generator],
       ["− مشتريات الشهر", purchasesTotal],
-      ["− سداد دين هذا الشهر", debtPayment]
+      ["− سداد دين هذا الشهر", debtPayment],
+      ["− إضافة للادخار", savingsAdd],
+      ["+ سحب من الادخار", savingsWithdraw]
     ];
     $("finBreakdown").innerHTML = rows.map(function(r){
       return '<div class="item"><span>' + r[0] + '</span><span>' + fmtMoney(r[1]) + '</span></div>';
     }).join("");
 
     $("finNet").textContent = fmtMoney(net);
+  }
+
+  /* ---------- التخطيط (استراتيجي، شهري، أشخاص) ---------- */
+  let strategicGoals = [];
+  let people = [];
+  let planItems = [];
+
+  function renderPlanItemRow(item, showOwnerTag, sourceMonthTag){
+    const el = document.createElement("div");
+    el.className = "plan-row";
+    const metaParts = [];
+    if(item.amount) metaParts.push(fmtMoney(item.amount));
+    if(item.date) metaParts.push(item.date);
+    if(showOwnerTag && item.owner && item.owner !== "عام") metaParts.push(item.owner);
+    if(sourceMonthTag) metaParts.push("من " + monthLabel(sourceMonthTag));
+    const meta = metaParts.length ? ' <span class="meta">(' + esc(metaParts.join(" · ")) + ")</span>" : "";
+    el.innerHTML =
+      '<label><input type="checkbox" class="plan-check" data-id="' + item.id + '" ' + (item.done ? "checked" : "") + '>' +
+      '<span class="txt' + (item.done ? " done" : "") + '">' + esc(item.text) + meta + "</span></label>" +
+      '<button type="button" class="plan-del" data-id="' + item.id + '">✕</button>';
+    return el;
+  }
+  function wirePlanRowEvents(container, onChange){
+    container.querySelectorAll(".plan-check").forEach(function(cb){
+      cb.addEventListener("change", async function(){
+        const item = planItems.find((i) => i.id === Number(cb.dataset.id));
+        if(!item) return;
+        item.done = cb.checked;
+        item.doneAt = item.done ? new Date().toISOString() : null;
+        await putRec("planItems", item);
+        planItems = await getAll("planItems");
+        onChange();
+      });
+    });
+    container.querySelectorAll(".plan-del").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        if(!confirm("حذف هذا العنصر؟")) return;
+        await delRec("planItems", Number(btn.dataset.id));
+        planItems = await getAll("planItems");
+        onChange();
+        toast("تم الحذف");
+      });
+    });
+  }
+
+  /* ----- الخطة الاستراتيجية ----- */
+  function renderStrategic(){
+    const box = $("strategicList");
+    box.innerHTML = "";
+    const sorted = strategicGoals.slice().sort((a,b) => (a.done - b.done) || (b.id - a.id));
+    if(sorted.length === 0){
+      box.innerHTML = '<div class="empty" style="padding:8px 0;font-size:13px;">لا توجد أهداف بعد</div>';
+      return;
+    }
+    sorted.forEach(function(g){
+      const el = document.createElement("div");
+      el.className = "plan-row";
+      el.innerHTML =
+        '<label><input type="checkbox" class="strat-check" data-id="' + g.id + '" ' + (g.done ? "checked" : "") + '>' +
+        '<span class="txt' + (g.done ? " done" : "") + '">' + esc(g.text) + "</span></label>" +
+        '<button type="button" class="strat-del" data-id="' + g.id + '">✕</button>';
+      box.appendChild(el);
+    });
+    box.querySelectorAll(".strat-check").forEach(function(cb){
+      cb.addEventListener("change", async function(){
+        const g = strategicGoals.find((x) => x.id === Number(cb.dataset.id));
+        if(!g) return;
+        g.done = cb.checked;
+        await putRec("strategicGoals", g);
+        strategicGoals = await getAll("strategicGoals");
+        renderStrategic();
+      });
+    });
+    box.querySelectorAll(".strat-del").forEach(function(btn){
+      btn.addEventListener("click", async function(){
+        if(!confirm("حذف هذا الهدف؟")) return;
+        await delRec("strategicGoals", Number(btn.dataset.id));
+        strategicGoals = await getAll("strategicGoals");
+        renderStrategic();
+        toast("تم الحذف");
+      });
+    });
+  }
+  $("strategicAddBtn").addEventListener("click", async function(){
+    const text = $("strategicInput").value.trim();
+    if(!text){ toast("اكتب الهدف أولاً"); return; }
+    await putRec("strategicGoals", { text: text, done: false, createdAt: new Date().toISOString() });
+    $("strategicInput").value = "";
+    strategicGoals = await getAll("strategicGoals");
+    renderStrategic();
+    toast("تمت الإضافة");
+  });
+
+  /* ----- الخطة الشهرية (تكتيكي) ----- */
+  function renderOwnerDropdowns(){
+    [$("planGoalOwner"), $("planReqOwner")].forEach(function(sel){
+      const prev = sel.value || "عام";
+      sel.innerHTML = '<option value="عام">عام</option>';
+      people.forEach(function(p){
+        const o = document.createElement("option");
+        o.value = p.name; o.textContent = p.name;
+        sel.appendChild(o);
+      });
+      sel.value = Array.from(sel.options).some((o) => o.value === prev) ? prev : "عام";
+    });
+  }
+  function planItemsForMonthView(month, type){
+    return planItems.filter((i) => i.type === type && i.month && (i.month === month || (i.month < month && !i.done)));
+  }
+  function renderPlanMonthLists(){
+    const month = $("planMonth").value || currentMonth();
+    const goals = planItemsForMonthView(month, "goal").sort((a,b) => (a.done - b.done) || (b.id - a.id));
+    const reqs = planItemsForMonthView(month, "requirement").sort((a,b) => (a.done - b.done) || (b.id - a.id));
+    const goalsBox = $("planGoalsList");
+    goalsBox.innerHTML = "";
+    if(goals.length === 0){ goalsBox.innerHTML = '<div class="empty" style="padding:8px 0;font-size:13px;">لا توجد أهداف لهذا الشهر</div>'; }
+    else { goals.forEach((item) => goalsBox.appendChild(renderPlanItemRow(item, true, item.month !== month ? item.month : null))); }
+    wirePlanRowEvents(goalsBox, renderPlanMonthLists);
+
+    const reqsBox = $("planReqsList");
+    reqsBox.innerHTML = "";
+    if(reqs.length === 0){ reqsBox.innerHTML = '<div class="empty" style="padding:8px 0;font-size:13px;">لا توجد متطلبات لهذا الشهر</div>'; }
+    else { reqs.forEach((item) => reqsBox.appendChild(renderPlanItemRow(item, true, item.month !== month ? item.month : null))); }
+    wirePlanRowEvents(reqsBox, renderPlanMonthLists);
+  }
+  $("planMonth").addEventListener("change", function(){ renderPlanMonthLists(); loadMonthNotes(); });
+  $("planGoalMoreToggle").addEventListener("click", function(){ $("planGoalMore").classList.toggle("hidden"); });
+  $("planReqMoreToggle").addEventListener("click", function(){ $("planReqMore").classList.toggle("hidden"); });
+
+  async function addMonthPlanItem(type){
+    const textId = type === "goal" ? "planGoalText" : "planReqText";
+    const ownerId = type === "goal" ? "planGoalOwner" : "planReqOwner";
+    const amountId = type === "goal" ? "planGoalAmount" : "planReqAmount";
+    const dateId = type === "goal" ? "planGoalDate" : "planReqDate";
+    const text = $(textId).value.trim();
+    if(!text){ toast("اكتب النص أولاً"); return; }
+    const month = $("planMonth").value || currentMonth();
+    const dateVal = $(dateId).value;
+    const amountRaw = $(amountId).value.trim();
+    await putRec("planItems", {
+      text: text, type: type,
+      owner: $(ownerId).value || "عام",
+      amount: amountRaw ? Math.round(Number(amountRaw)) : null,
+      date: dateVal || null,
+      month: dateVal ? dateVal.slice(0,7) : month,
+      done: false, doneAt: null, createdAt: new Date().toISOString()
+    });
+    $(textId).value = ""; $(amountId).value = ""; $(dateId).value = "";
+    planItems = await getAll("planItems");
+    renderPlanMonthLists();
+    toast("تمت الإضافة");
+  }
+  $("planGoalAddBtn").addEventListener("click", function(){ addMonthPlanItem("goal"); });
+  $("planReqAddBtn").addEventListener("click", function(){ addMonthPlanItem("requirement"); });
+
+  let notesSaveTimer = null;
+  async function loadMonthNotes(){
+    const month = $("planMonth").value || currentMonth();
+    try{
+      const rec = await getRec("monthNotes", month);
+      $("planNotes").value = rec ? rec.text : "";
+    }catch(e){ $("planNotes").value = ""; }
+  }
+  $("planNotes").addEventListener("input", function(){
+    clearTimeout(notesSaveTimer);
+    notesSaveTimer = setTimeout(async function(){
+      const month = $("planMonth").value || currentMonth();
+      await putRec("monthNotes", { month: month, text: $("planNotes").value });
+    }, 400);
+  });
+
+  /* ----- الأشخاص ----- */
+  async function loadPeople(){
+    people = await getAll("people");
+    const sel = $("personSelect");
+    const prev = sel.value;
+    sel.innerHTML = "";
+    people.forEach(function(p){
+      const o = document.createElement("option");
+      o.value = p.name; o.textContent = p.name;
+      sel.appendChild(o);
+    });
+    if(people.some((p) => p.name === prev)) sel.value = prev;
+    renderOwnerDropdowns();
+  }
+  $("addPersonBtn").addEventListener("click", async function(){
+    const name = $("newPersonInput").value.trim();
+    if(!name){ toast("اكتب اسم أولاً"); return; }
+    if(people.some((p) => p.name === name)){ toast("موجود مسبقاً"); return; }
+    await putRec("people", { name: name });
+    $("newPersonInput").value = "";
+    await loadPeople();
+    $("personSelect").value = name;
+    renderPersonView();
+    toast("تمت الإضافة");
+  });
+  $("personSelect").addEventListener("change", renderPersonView);
+
+  function planItemsForPerson(name){
+    return planItems.filter((i) => i.owner === name);
+  }
+  function renderPersonView(){
+    const name = $("personSelect").value;
+    $("personItemsTitle").textContent = name ? ("عناصر " + name) : "العناصر";
+    const box = $("personItemsList");
+    box.innerHTML = "";
+    if(!name){ box.innerHTML = '<div class="empty" style="padding:8px 0;font-size:13px;">أضف شخصاً أولاً</div>'; return; }
+    const items = planItemsForPerson(name).sort((a,b) => (a.done - b.done) || (b.id - a.id));
+    if(items.length === 0){ box.innerHTML = '<div class="empty" style="padding:8px 0;font-size:13px;">لا توجد عناصر لهذا الشخص بعد</div>'; return; }
+    items.forEach((item) => box.appendChild(renderPlanItemRow(item, false, null)));
+    wirePlanRowEvents(box, renderPersonView);
+  }
+  $("personItemAddBtn").addEventListener("click", async function(){
+    const name = $("personSelect").value;
+    if(!name){ toast("أضف شخصاً أولاً"); return; }
+    const text = $("personItemText").value.trim();
+    if(!text){ toast("اكتب النص أولاً"); return; }
+    const dateVal = $("personItemDate").value;
+    const amountRaw = $("personItemAmount").value.trim();
+    await putRec("planItems", {
+      text: text, type: $("personItemType").value, owner: name,
+      amount: amountRaw ? Math.round(Number(amountRaw)) : null,
+      date: dateVal || null,
+      month: dateVal ? dateVal.slice(0,7) : null,
+      done: false, doneAt: null, createdAt: new Date().toISOString()
+    });
+    $("personItemText").value = ""; $("personItemAmount").value = ""; $("personItemDate").value = "";
+    planItems = await getAll("planItems");
+    renderPersonView();
+    toast("تمت الإضافة");
+  });
+
+  /* ----- تبديل الأقسام الفرعية ----- */
+  document.querySelectorAll(".planTab").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".planTab").forEach((b) => b.classList.toggle("active", b === btn));
+      document.querySelectorAll(".plan-view").forEach((v) => v.classList.toggle("active", v.id === "planView-" + btn.dataset.plan));
+      if(btn.dataset.plan === "month"){ renderPlanMonthLists(); loadMonthNotes(); }
+      if(btn.dataset.plan === "people") renderPersonView();
+      if(btn.dataset.plan === "strategic") renderStrategic();
+    });
+  });
+
+  async function openPlanScreen(){
+    strategicGoals = await getAll("strategicGoals");
+    people = await getAll("people");
+    if(people.length === 0){
+      await putRec("people", { name: "مروان" });
+      await putRec("people", { name: "ودق" });
+      await putRec("people", { name: "سما" });
+      people = await getAll("people");
+    }
+    planItems = await getAll("planItems");
+    if(!$("planMonth").value) $("planMonth").value = currentMonth();
+    await loadPeople();
+    if(!$("personSelect").value && people.length) $("personSelect").value = people[0].name;
+    renderStrategic();
+    renderPlanMonthLists();
+    loadMonthNotes();
+    renderPersonView();
   }
 
   /* ---------- التصدير إلى إكسل ---------- */
@@ -1421,10 +1943,16 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     const finmonthsAll = await getAll("finmonths");
     const persDebtsAll = await getAll("persDebts");
     const purchasesAll = await getAll("purchases");
+    const savingsAll = await getAll("savings");
+    const strategicAll = await getAll("strategicGoals");
+    const peopleAll = await getAll("people");
+    const planItemsAll = await getAll("planItems");
+    const monthNotesAll = await getAll("monthNotes");
     const out = {
-      app:"labCases", version:3, exportedAt:new Date().toISOString(),
+      app:"labCases", version:5, exportedAt:new Date().toISOString(),
       doctors:doctors, debts:debts, cases:[],
-      finmonths: finmonthsAll, persDebts: persDebtsAll, purchases: purchasesAll
+      finmonths: finmonthsAll, persDebts: persDebtsAll, purchases: purchasesAll, savings: savingsAll,
+      strategicGoals: strategicAll, people: peopleAll, planItems: planItemsAll, monthNotes: monthNotesAll
     };
     for(const c of cases){
       const copy = Object.assign({}, c);
@@ -1449,6 +1977,11 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     await clearStore("finmonths");
     await clearStore("persDebts");
     await clearStore("purchases");
+    await clearStore("savings");
+    await clearStore("strategicGoals");
+    await clearStore("people");
+    await clearStore("planItems");
+    await clearStore("monthNotes");
     for(const c of data.cases){
       const rec = Object.assign({}, c);
       rec.photo = c.photo ? await dataUrlToBlob(c.photo) : null;
@@ -1466,6 +1999,23 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
       delete rec.id;
       await putRec("persDebts", rec);
     }
+    for(const s of (data.savings || [])){
+      const rec = Object.assign({}, s);
+      delete rec.id;
+      await putRec("savings", rec);
+    }
+    for(const g of (data.strategicGoals || [])){
+      const rec = Object.assign({}, g);
+      delete rec.id;
+      await putRec("strategicGoals", rec);
+    }
+    for(const p of (data.people || [])) await putRec("people", p);
+    for(const it of (data.planItems || [])){
+      const rec = Object.assign({}, it);
+      delete rec.id;
+      await putRec("planItems", rec);
+    }
+    for(const n of (data.monthNotes || [])) await putRec("monthNotes", n);
     for(const p of (data.purchases || [])){
       const rec = Object.assign({}, p);
       delete rec.id;
